@@ -5,6 +5,7 @@ from typing import Optional, Union, Literal
 
 import plotly.graph_objects as go
 
+from flux_rx.export import export as export_file
 from flux_rx.data import fetch, get_info, fetch_multiple, align_dataframes
 from flux_rx.analytics import compute_metrics, format_metrics, monthly_returns
 from flux_rx.charts import (
@@ -22,6 +23,8 @@ from flux_rx.charts import (
 )
 from flux_rx.report import generate_report, generate_comparison_report
 from flux_rx.compare import compare_tickers, ComparisonResult
+from flux_rx.portfolio import optimize_portfolio as optimize_fn
+from flux_rx.screener import screen_tickers as screen_fn
 from flux_rx.themes import DEFAULT_THEME
 
 ChartKind = Literal[
@@ -248,6 +251,76 @@ def info(ticker: str) -> dict:
     return get_info(ticker)
 
 
+def export(
+    ticker: str,
+    format: str = "csv",
+    path: Optional[str] = None,
+    period: str = "5y",
+) -> str:
+    """
+    Export ticker data and metrics.
+    
+    Args:
+        ticker: Stock symbol
+        format: "csv", "json", "excel"
+        path: Output file path
+        period: Time period
+        
+    Returns:
+        Absolute path to exported file
+    """
+    return export_file(ticker, format=format, path=path, period=period)
+
+
+def optimize(
+    tickers: list[str],
+    period: str = "5y",
+    objective: str = "sharpe",
+    risk_free_rate: Optional[float] = None,
+) -> dict:
+    """
+    Optimize a portfolio of tickers.
+    
+    Args:
+        tickers: List of stock symbols
+        period: Lookback period for optimization
+        objective: "sharpe", "min_vol", "max_return"
+        risk_free_rate: Optional annual risk-free rate
+        
+    Returns:
+        Dictionary with optimized weights and performance metrics
+    """
+    data = fetch_multiple(tickers, period=period)
+    prices_df = align_dataframes(data)
+    
+    from flux_rx.config import get_config
+    if risk_free_rate is None:
+        risk_free_rate = get_config().risk_free_rate
+        
+    return optimize_fn(prices_df, objective=objective, risk_free_rate=risk_free_rate)
+
+
+def screen(
+    tickers: list[str],
+    period: str = "1y",
+    sort_by: str = "sharpe_ratio",
+    ascending: bool = False,
+) -> pd.DataFrame:
+    """
+    Screen and rank a list of tickers based on performance.
+    
+    Args:
+        tickers: List of stock symbols
+        period: Analysis period
+        sort_by: Metric to rank by
+        ascending: Sort order
+        
+    Returns:
+        Pandas DataFrame with ranked results
+    """
+    return screen_fn(tickers, period=period, sort_by=sort_by, ascending=ascending)
+
+
 def app(
     tickers: Optional[list[str]] = None,
     port: int = 8050,
@@ -298,6 +371,15 @@ Get metrics:
 
 Get info:
     fx.info("AAPL")
+
+Export data:
+    fx.export("AAPL", format="csv")
+
+Portfolio Optimization:
+    fx.optimize(["AAPL", "MSFT", "GOOGL", "NVDA"])
+
+Stock Screening:
+    fx.screen(["AAPL", "TSLA", "MSFT", "META", "AMZN"])
 
 Available themes: glass, midnight, light, terminal
 Available periods: 1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max
