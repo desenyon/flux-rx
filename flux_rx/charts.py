@@ -333,7 +333,7 @@ def monthly_heatmap(
             text=text_matrix,
             texttemplate="%{text}",
             textfont={"size": 10, "color": colors["text"]},
-            colorscale=get_heatmap_colorscale(),
+            colorscale=get_heatmap_colorscale(theme),
             zmid=0,
             zmin=-15,
             zmax=15,
