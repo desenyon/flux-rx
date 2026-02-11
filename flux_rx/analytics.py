@@ -7,7 +7,18 @@ import numpy as np
 import pandas as pd
 
 TRADING_DAYS_PER_YEAR = 252
-RISK_FREE_RATE = 0.04
+_RISK_FREE_RATE = 0.04
+
+
+def set_risk_free_rate(rate: float) -> None:
+    """Set the global risk-free rate."""
+    global _RISK_FREE_RATE
+    _RISK_FREE_RATE = rate
+
+
+def get_risk_free_rate() -> float:
+    """Get the global risk-free rate."""
+    return _RISK_FREE_RATE
 
 
 def daily_returns(prices: pd.Series) -> pd.Series:
@@ -53,8 +64,10 @@ def drawdown_series(prices: pd.Series) -> pd.Series:
 
 def sharpe_ratio(
     prices: pd.Series,
-    risk_free_rate: float = RISK_FREE_RATE,
+    risk_free_rate: Optional[float] = None,
 ) -> float:
+    if risk_free_rate is None:
+        risk_free_rate = _RISK_FREE_RATE
     returns = daily_returns(prices)
     excess_returns = returns - risk_free_rate / TRADING_DAYS_PER_YEAR
     if returns.std() == 0:
@@ -64,8 +77,10 @@ def sharpe_ratio(
 
 def sortino_ratio(
     prices: pd.Series,
-    risk_free_rate: float = RISK_FREE_RATE,
+    risk_free_rate: Optional[float] = None,
 ) -> float:
+    if risk_free_rate is None:
+        risk_free_rate = _RISK_FREE_RATE
     returns = daily_returns(prices)
     excess_returns = returns - risk_free_rate / TRADING_DAYS_PER_YEAR
     downside_returns = returns[returns < 0]
@@ -97,8 +112,10 @@ def rolling_volatility(
 def rolling_sharpe(
     prices: pd.Series,
     window: int = 63,
-    risk_free_rate: float = RISK_FREE_RATE,
+    risk_free_rate: Optional[float] = None,
 ) -> pd.Series:
+    if risk_free_rate is None:
+        risk_free_rate = _RISK_FREE_RATE
     returns = daily_returns(prices)
     excess_returns = returns - risk_free_rate / TRADING_DAYS_PER_YEAR
     roll_mean = excess_returns.rolling(window=window).mean()
@@ -115,18 +132,16 @@ def rolling_beta(
     bench_returns = daily_returns(benchmark_prices)
     aligned = pd.DataFrame({"asset": returns, "bench": bench_returns}).dropna()
     
-    def calc_beta(window_data):
-        if len(window_data) < 2:
-            return np.nan
-        cov = window_data["asset"].cov(window_data["bench"])
-        var = window_data["bench"].var()
-        return cov / var if var != 0 else np.nan
-    
-    result = aligned.rolling(window=window).apply(
-        lambda x: calc_beta(pd.DataFrame({"asset": x[:len(x)//2], "bench": x[len(x)//2:]})),
-        raw=False
-    )
-    return pd.Series(result.values, index=aligned.index)  # type: ignore[arg-type]
+    betas = []
+    for i in range(len(aligned)):
+        if i < window:
+            betas.append(np.nan)
+        else:
+            w = aligned.iloc[i - window : i]
+            cov = w["asset"].cov(w["bench"])
+            var = w["bench"].var()
+            betas.append(cov / var if var != 0 else np.nan)
+    return pd.Series(betas, index=aligned.index)
 
 
 def beta(prices: pd.Series, benchmark_prices: pd.Series) -> float:
@@ -143,8 +158,10 @@ def beta(prices: pd.Series, benchmark_prices: pd.Series) -> float:
 def alpha(
     prices: pd.Series,
     benchmark_prices: pd.Series,
-    risk_free_rate: float = RISK_FREE_RATE,
+    risk_free_rate: Optional[float] = None,
 ) -> float:
+    if risk_free_rate is None:
+        risk_free_rate = _RISK_FREE_RATE
     asset_return = cagr(prices)
     bench_return = cagr(benchmark_prices)
     b = beta(prices, benchmark_prices)
@@ -162,9 +179,19 @@ def monthly_returns(prices: pd.Series) -> pd.DataFrame:
         "return": returns.values,
     })
     pivot = df.pivot(index="year", columns="month", values="return")
-    pivot.columns = pd.Index(["Jan", "Feb", "Mar", "Apr", "May", "Jun", 
-                              "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"])
-    return pivot
+    all_months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    
+    # Reindex to ensure all months are present as columns
+    present_months = [all_months[i-1] for i in sorted(df["month"].unique())]
+    pivot.columns = pd.Index(present_months)
+    
+    # Fill missing months with NaN and ensure order
+    for month in all_months:
+        if month not in pivot.columns:
+            pivot[month] = np.nan
+            
+    return pivot[all_months]
 
 
 def yearly_returns(prices: pd.Series) -> pd.Series:
@@ -207,11 +234,42 @@ def detect_regime(
     return regime
 
 
+def value_at_risk(prices: pd.Series, confidence: float = 0.95) -> float:
+    """Historical Value at Risk."""
+    returns = daily_returns(prices)
+    return np.percentile(returns, (1 - confidence) * 100)
+
+
+def conditional_va_risk(prices: pd.Series, confidence: float = 0.95) -> float:
+    """Conditional Value at Risk (Expected Shortfall)."""
+    returns = daily_returns(prices)
+    var = value_at_risk(prices, confidence)
+    return returns[returns <= var].mean()
+
+
+def omega_ratio(prices: pd.Series, threshold: float = 0.0) -> float:
+    """Omega Ratio."""
+    returns = daily_returns(prices)
+    excess = returns - threshold
+    upside = excess[excess > 0].sum()
+    downside = -excess[excess < 0].sum()
+    return upside / downside if downside != 0 else 0.0
+
+
+def win_rate(prices: pd.Series) -> float:
+    """Percentage of positive days."""
+    returns = daily_returns(prices)
+    return len(returns[returns > 0]) / len(returns) if len(returns) > 0 else 0.0
+
+
 def compute_metrics(
     prices: pd.Series,
     benchmark_prices: Optional[pd.Series] = None,
-    risk_free_rate: float = RISK_FREE_RATE,
+    risk_free_rate: Optional[float] = None,
 ) -> dict:
+    if risk_free_rate is None:
+        risk_free_rate = _RISK_FREE_RATE
+    
     metrics = {
         "total_return": total_return(prices),
         "cagr": cagr(prices),
@@ -220,6 +278,10 @@ def compute_metrics(
         "sharpe_ratio": sharpe_ratio(prices, risk_free_rate),
         "sortino_ratio": sortino_ratio(prices, risk_free_rate),
         "calmar_ratio": calmar_ratio(prices),
+        "win_rate": win_rate(prices),
+        "var_95": value_at_risk(prices, 0.95),
+        "cvar_95": conditional_va_risk(prices, 0.95),
+        "omega": omega_ratio(prices),
     }
     
     if benchmark_prices is not None:
