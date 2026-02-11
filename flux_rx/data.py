@@ -1,9 +1,7 @@
-# Flux-RX Data Module: Fetching, caching, and metadata handling
-from __future__ import annotations
-
 import hashlib
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, Union
@@ -95,8 +93,12 @@ def fetch_multiple(
     period: str = "5y",
     interval: str = "1d",
     use_cache: bool = True,
+    max_workers: int = 10,
 ) -> dict[str, pd.DataFrame]:
-    return {t: fetch(t, period, interval, use_cache) for t in tickers}
+    """Fetch multiple tickers concurrently."""
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {t: executor.submit(fetch, t, period, interval, use_cache) for t in tickers}
+        return {t: f.result() for t, f in futures.items()}
 
 
 def get_info(ticker: str, use_cache: bool = True) -> dict:
