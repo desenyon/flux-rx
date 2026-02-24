@@ -2,109 +2,151 @@
 from __future__ import annotations
 from typing import Any
 
-# Default "flux" theme (previously THEME)
-FLUX_THEME: dict[str, Any] = {
-    "name": "Flux",
-    "colors": {
-        "background": "#0d1117",
-        "paper": "#161b22",
-        "surface": "#21262d",
-        "primary": "#58a6ff",
-        "secondary": "#7ee787",
-        "accent": "#ff7b72",
-        "warning": "#d29922",
-        "text": "#c9d1d9",
-        "text_muted": "#8b949e",
-        "grid": "#30363d",
-        "border": "#30363d",
-        "positive": "#3fb950",
-        "negative": "#f85149",
-    },
-    "palette": ["#58a6ff", "#7ee787", "#ff7b72", "#d2a8ff", "#79c0ff", "#ffa657", "#a5d6ff", "#f778ba"],
-    "font": {"family": "Inter, sans-serif", "size": 12, "color": "#c9d1d9"},
-    "title_font": {"family": "Inter, sans-serif", "size": 18, "color": "#ffffff"},
-}
+from flux_rx.exceptions import FluxThemeError
 
-MIDNIGHT_THEME: dict[str, Any] = {
-    "name": "Midnight",
+# Professional "Obsidian" theme (High-contrast dark, Bloomberg inspired)
+OBSIDIAN_THEME: dict[str, Any] = {
+    "name": "Obsidian",
     "colors": {
-        "background": "#05070a",
-        "paper": "#0a0c10",
-        "surface": "#12151c",
-        "primary": "#38bdf8",
-        "secondary": "#34d399",
-        "accent": "#f472b6",
-        "warning": "#fbbf24",
-        "text": "#e2e8f0",
+        "background": "#000000",
+        "paper": "#0a0a0a",
+        "surface": "#121212",
+        "primary": "#38bdf8",  # Cyber Blue
+        "secondary": "#34d399",  # Emerald
+        "accent": "#cbd5e1",  # Slate light
+        "warning": "#fbbf24",  # Amber
+        "text": "#f1f5f9",
         "text_muted": "#94a3b8",
         "grid": "#1e293b",
-        "border": "#1e293b",
-        "positive": "#10b981",
-        "negative": "#ef4444",
+        "border": "#273243",
+        "positive": "#10b981",  # Green
+        "negative": "#ef4444",  # Red
     },
-    "palette": ["#38bdf8", "#34d399", "#f472b6", "#fbbf24", "#818cf8", "#c084fc", "#fb7185", "#2dd4bf"],
-    "font": {"family": "Inter, sans-serif", "size": 12, "color": "#e2e8f0"},
+    "palette": [
+        "#38bdf8",
+        "#34d399",
+        "#cbd5e1",
+        "#fbbf24",
+        "#e2e8f0",
+        "#94a3b8",
+        "#10b981",
+        "#0ea5e9",
+    ],
+    "font": {"family": "Inter, sans-serif", "size": 12, "color": "#f1f5f9"},
     "title_font": {"family": "Inter, sans-serif", "size": 18, "color": "#ffffff"},
-}
-
-LIGHT_THEME: dict[str, Any] = {
-    "name": "Light",
-    "colors": {
-        "background": "#ffffff",
-        "paper": "#f8fafc",
-        "surface": "#f1f5f9",
-        "primary": "#2563eb",
-        "secondary": "#10b981",
-        "accent": "#f43f5e",
-        "warning": "#d97706",
-        "text": "#1e293b",
-        "text_muted": "#64748b",
-        "grid": "#e2e8f0",
-        "border": "#e2e8f0",
-        "positive": "#16a34a",
-        "negative": "#dc2626",
-    },
-    "palette": ["#2563eb", "#10b981", "#f43f5e", "#d97706", "#7c3aed", "#0891b2", "#db2777", "#4f46e5"],
-    "font": {"family": "Inter, sans-serif", "size": 12, "color": "#1e293b"},
-    "title_font": {"family": "Inter, sans-serif", "size": 18, "color": "#0f172a"},
 }
 
 TERMINAL_THEME: dict[str, Any] = {
     "name": "Terminal",
     "colors": {
         "background": "#000000",
-        "paper": "#0a0a0a",
-        "surface": "#1a1a1a",
+        "paper": "#050505",
+        "surface": "#0a0a0a",
         "primary": "#00ff00",
         "secondary": "#00cc00",
-        "accent": "#ffff00",
+        "accent": "#cccccc",
         "warning": "#ffaa00",
         "text": "#00ff00",
-        "text_muted": "#00aa00",
-        "grid": "#003300",
-        "border": "#005500",
+        "text_muted": "#008800",
+        "grid": "#002200",
+        "border": "#004400",
         "positive": "#00ff00",
         "negative": "#ff0000",
     },
-    "palette": ["#00ff00", "#ffff00", "#00ffff", "#ff00ff", "#0088ff", "#ff8800", "#ffffff", "#888888"],
+    "palette": [
+        "#00ff00",
+        "#00cc00",
+        "#ffffff",
+        "#cccccc",
+        "#008800",
+        "#55ff55",
+        "#004400",
+        "#aaaaaa",
+    ],
     "font": {"family": "JetBrains Mono, monospace", "size": 12, "color": "#00ff00"},
     "title_font": {"family": "JetBrains Mono, monospace", "size": 18, "color": "#00ff00"},
 }
 
-_THEMES = {
-    "flux": FLUX_THEME,
-    "glass": FLUX_THEME,  # Alias
-    "midnight": MIDNIGHT_THEME,
-    "light": LIGHT_THEME,
-    "terminal": TERMINAL_THEME,
+MONOCHROME_THEME: dict[str, Any] = {
+    "name": "Monochrome",
+    "colors": {
+        "background": "#ffffff",
+        "paper": "#f5f5f5",
+        "surface": "#ebebeb",
+        "primary": "#000000",
+        "secondary": "#333333",
+        "accent": "#666666",
+        "warning": "#999999",
+        "text": "#111111",
+        "text_muted": "#777777",
+        "grid": "#cccccc",
+        "border": "#bbbbbb",
+        "positive": "#111111",  # Differentiate by marker not color
+        "negative": "#999999",
+    },
+    "palette": [
+        "#000000",
+        "#333333",
+        "#666666",
+        "#999999",
+        "#222222",
+        "#444444",
+        "#888888",
+        "#aaaaaa",
+    ],
+    "font": {"family": "Inter, sans-serif", "size": 12, "color": "#111111"},
+    "title_font": {"family": "Inter, sans-serif", "size": 18, "color": "#000000"},
 }
 
-DEFAULT_THEME = "flux"
+LIGHT_PRO_THEME: dict[str, Any] = {
+    "name": "Light Pro",
+    "colors": {
+        "background": "#ffffff",
+        "paper": "#f8fafc",
+        "surface": "#f1f5f9",
+        "primary": "#0284c7",  # Sky darker
+        "secondary": "#0f766e",  # Teal
+        "accent": "#475569",  # Slate
+        "warning": "#ca8a04",
+        "text": "#0f172a",
+        "text_muted": "#64748b",
+        "grid": "#e2e8f0",
+        "border": "#cbd5e1",
+        "positive": "#15803d",
+        "negative": "#b91c1c",
+    },
+    "palette": [
+        "#0284c7",
+        "#0f766e",
+        "#475569",
+        "#ca8a04",
+        "#0369a1",
+        "#0d9488",
+        "#b91c1c",
+        "#15803d",
+    ],
+    "font": {"family": "Inter, sans-serif", "size": 12, "color": "#0f172a"},
+    "title_font": {"family": "Inter, sans-serif", "size": 18, "color": "#020617"},
+}
+
+_THEMES = {
+    "obsidian": OBSIDIAN_THEME,
+    "flux": OBSIDIAN_THEME,  # Fallback maps to Obsidian
+    "terminal": TERMINAL_THEME,
+    "monochrome": MONOCHROME_THEME,
+    "light_pro": LIGHT_PRO_THEME,
+    "light": LIGHT_PRO_THEME,  # Fallback maps to Light Pro
+}
+
+DEFAULT_THEME = "obsidian"
 
 
 def get_theme(name: str = DEFAULT_THEME) -> dict[str, Any]:
     """Get the theme configuration by name."""
-    return _THEMES.get(name.lower(), FLUX_THEME)
+    theme = _THEMES.get(name.lower())
+    if theme is None:
+        raise FluxThemeError(f"Unknown theme: '{name}'. Available: {list_themes()}")
+    return theme
 
 
 def list_themes() -> list[str]:
@@ -124,21 +166,25 @@ def create_layout(
     colors = theme["colors"]
     font = theme["font"]
     title_font = theme["title_font"]
-    
-    is_dark = theme != LIGHT_THEME
-    
+
+    is_dark = theme in [OBSIDIAN_THEME, TERMINAL_THEME]
+
     return {
         "template": "plotly_dark" if is_dark else "plotly_white",
         "paper_bgcolor": colors["paper"],
         "plot_bgcolor": colors["background"],
         "height": height,
         "margin": {"l": 60, "r": 30, "t": 60 if title else 30, "b": 50},
-        "title": {
-            "text": title,
-            "font": title_font,
-            "x": 0.02,
-            "xanchor": "left",
-        } if title else None,
+        "title": (
+            {
+                "text": title,
+                "font": title_font,
+                "x": 0.02,
+                "xanchor": "left",
+            }
+            if title
+            else None
+        ),
         "font": font,
         "showlegend": show_legend,
         "legend": {
@@ -194,20 +240,20 @@ def get_heatmap_colorscale(name: str = DEFAULT_THEME) -> list:
     """Get the colorscale for monthly returns heatmap."""
     theme = get_theme(name)
     colors = theme["colors"]
-    
-    if theme == LIGHT_THEME:
+
+    if theme in [LIGHT_PRO_THEME, MONOCHROME_THEME]:
         return [
-            [0.0, "#b91c1c"],
-            [0.35, "#fee2e2"],
+            [0.0, colors["negative"]],
+            [0.35, "#f1f5f9"],
             [0.5, "#ffffff"],
             [0.65, "#dcfce7"],
-            [1.0, "#15803d"],
+            [1.0, colors["positive"]],
         ]
-    
+
     return [
         [0.0, colors["negative"]],
-        [0.35, "#3d1f1f"],
+        [0.35, "#1f2937"],
         [0.5, colors["surface"]],
-        [0.65, "#1f3d1f"],
+        [0.65, "#064e3b"],
         [1.0, colors["positive"]],
     ]
