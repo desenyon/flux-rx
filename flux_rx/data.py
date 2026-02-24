@@ -9,8 +9,13 @@ from typing import Optional, Union
 import pandas as pd
 import yfinance as yf
 
+from flux_rx.exceptions import FluxDataError
+from flux_rx.logger import get_logger
+
 _CACHE_DIR = Path.home() / ".flux_rx_cache"
 _CACHE_EXPIRY_HOURS = 4
+
+logger = get_logger(__name__)
 
 PERIOD_MAP = {
     "1d": 1,
@@ -52,8 +57,12 @@ def clear_cache() -> int:
     cache_dir = _ensure_cache_dir()
     count = 0
     for f in cache_dir.glob("*"):
-        f.unlink()
-        count += 1
+        try:
+            f.unlink()
+            count += 1
+        except Exception as e:
+            logger.warning(f"Failed to delete {f}: {e}")
+    logger.info(f"Cleared {count} files from cache.")
     return count
 
 
@@ -68,22 +77,35 @@ def fetch(
     cache_file = _cache_path(key)
 
     if use_cache and _is_cache_valid(cache_file):
-        df = pd.read_parquet(cache_file)
-        df.index = pd.to_datetime(df.index)
-        return df
+        try:
+            df = pd.read_parquet(cache_file)
+            df.index = pd.to_datetime(df.index)
+            logger.info(f"Loaded {ticker} from cache.")
+            return df
+        except Exception as e:
+            logger.warning(f"Failed to read cache for {ticker}: {e}")
 
-    yf_ticker = yf.Ticker(ticker)
-    df = yf_ticker.history(period=period, interval=interval, auto_adjust=True)
-    
+    logger.info(f"Fetching {ticker} from Yahoo Finance (period={period}, interval={interval})...")
+    try:
+        yf_ticker = yf.Ticker(ticker)
+        df = yf_ticker.history(period=period, interval=interval, auto_adjust=True)
+    except Exception as e:
+        logger.error(f"Error fetching {ticker}: {e}")
+        raise FluxDataError(f"Failed to fetch {ticker}: {e}") from e
+
     if df.empty:
-        raise ValueError(f"No data found for ticker: {ticker}")
+        logger.error(f"No data returned for {ticker}.")
+        raise FluxDataError(f"No data found for ticker: {ticker}")
 
     df.index = pd.to_datetime(df.index)
     df.index.name = "Date"
     df = df[["Open", "High", "Low", "Close", "Volume"]]
 
     if use_cache:
-        df.to_parquet(cache_file)
+        try:
+            df.to_parquet(cache_file)
+        except Exception as e:
+            logger.warning(f"Failed to write cache for {ticker}: {e}")
 
     return df
 
@@ -107,11 +129,19 @@ def get_info(ticker: str, use_cache: bool = True) -> dict:
     cache_file = _cache_path(key, suffix=".json")
 
     if use_cache and _is_cache_valid(cache_file, max_age_hours=24):
-        with open(cache_file, "r") as f:
-            return json.load(f)
+        try:
+            with open(cache_file, "r") as f:
+                return json.load(f)
+        except Exception as e:
+            logger.warning(f"Failed to read info cache for {ticker}: {e}")
 
-    yf_ticker = yf.Ticker(ticker)
-    info = yf_ticker.info
+    logger.info(f"Fetching info for {ticker}...")
+    try:
+        yf_ticker = yf.Ticker(ticker)
+        info = yf_ticker.info
+    except Exception as e:
+        logger.error(f"Error fetching info for {ticker}: {e}")
+        raise FluxDataError(f"Failed to fetch info for {ticker}: {e}") from e
 
     clean_info = {
         "ticker": ticker,
@@ -138,8 +168,11 @@ def get_info(ticker: str, use_cache: bool = True) -> dict:
     }
 
     if use_cache:
-        with open(cache_file, "w") as f:
-            json.dump(clean_info, f, indent=2, default=str)
+        try:
+            with open(cache_file, "w") as f:
+                json.dump(clean_info, f, indent=2, default=str)
+        except Exception as e:
+            logger.warning(f"Failed to write info cache for {ticker}: {e}")
 
     return clean_info
 
