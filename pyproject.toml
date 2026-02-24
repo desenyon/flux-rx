@@ -35,6 +35,7 @@ dependencies = [
     "Jinja2>=3.1.0",
     "pyarrow>=14.0.0",
     "scipy>=1.10.0",
+    "rich>=13.0.0",
 ]
 
 [project.optional-dependencies]
@@ -42,6 +43,7 @@ dev = [
     "pytest>=7.0.0",
     "black>=23.0.0",
     "ruff>=0.1.0",
+    "mypy>=1.0.0",
 ]
 
 [project.urls]
