@@ -20,12 +20,12 @@ def export(
     """Export ticker data and optionally metrics to a file."""
     format = format.lower()
     df = fetch(ticker, period=period)
-    
+
     if path is None:
         path = f"{ticker.lower()}_export.{format}"
-    
+
     path = Path(path)
-    
+
     if format == "csv":
         df.to_csv(path)
     elif format == "json":
@@ -33,7 +33,7 @@ def export(
             data = {
                 "ticker": ticker,
                 "data": df.to_dict(orient="index"),
-                "metrics": compute_metrics(df["Close"])
+                "metrics": compute_metrics(df["Close"]),
             }
             with open(path, "w") as f:
                 json.dump(data, f, indent=4, default=str)
@@ -43,8 +43,10 @@ def export(
         try:
             import openpyxl  # Check if installed
         except ImportError:
-            raise ImportError("Exporting to Excel requires 'openpyxl'. Install it with 'pip install openpyxl'.")
-            
+            raise ImportError(
+                "Exporting to Excel requires 'openpyxl'. Install it with 'pip install openpyxl'."
+            )
+
         with pd.ExcelWriter(path) as writer:
             df.to_excel(writer, sheet_name="Data")
             if include_metrics:
@@ -53,5 +55,5 @@ def export(
                 m_df.to_excel(writer, sheet_name="Metrics", index=False)
     else:
         raise ValueError(f"Unsupported export format: {format}")
-        
+
     return str(path.absolute())

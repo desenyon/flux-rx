@@ -30,23 +30,24 @@ def price_chart(
 ) -> go.Figure:
     if ma_windows is None:
         ma_windows = [20, 50, 200]
-    
+
     theme_config = get_theme(theme)
     colors = theme_config["colors"]
     palette = theme_config["palette"]
-    
+
     if show_volume:
         fig = make_subplots(
-            rows=2, cols=1,
+            rows=2,
+            cols=1,
             shared_xaxes=True,
             vertical_spacing=0.03,
             row_heights=[0.75, 0.25],
         )
     else:
         fig = go.Figure()
-    
+
     row = 1 if show_volume else None
-    
+
     fig.add_trace(
         go.Scatter(
             x=df.index,
@@ -56,9 +57,10 @@ def price_chart(
             line={"color": colors["primary"], "width": 2},
             hovertemplate="%{y:$.2f}<extra></extra>",
         ),
-        row=row, col=1 if show_volume else None,
+        row=row,
+        col=1 if show_volume else None,
     )
-    
+
     for i, window in enumerate(ma_windows):
         if len(df) >= window:
             ma = df["Close"].rolling(window=window).mean()
@@ -71,9 +73,10 @@ def price_chart(
                     line={"color": palette[i + 1], "width": 1.5, "dash": "dot"},
                     hovertemplate=f"{window}D MA: %{{y:$.2f}}<extra></extra>",
                 ),
-                row=row, col=1 if show_volume else None,
+                row=row,
+                col=1 if show_volume else None,
             )
-    
+
     if show_volume and "Volume" in df.columns:
         volume_colors = [
             colors["positive"] if df["Close"].iloc[i] >= df["Open"].iloc[i] else colors["negative"]
@@ -88,9 +91,10 @@ def price_chart(
                 opacity=0.7,
                 hovertemplate="Vol: %{y:,.0f}<extra></extra>",
             ),
-            row=2, col=1,
+            row=2,
+            col=1,
         )
-    
+
     layout = create_layout(
         theme_config,
         title=f"{ticker} Price" if ticker else "Price",
@@ -98,11 +102,11 @@ def price_chart(
         y_title="Price ($)",
     )
     fig.update_layout(**layout)
-    
+
     if show_volume:
         fig.update_yaxes(title_text="Price ($)", row=1, col=1)
         fig.update_yaxes(title_text="Volume", row=2, col=1)
-    
+
     return fig
 
 
@@ -114,12 +118,12 @@ def volume_chart(
 ) -> go.Figure:
     theme_config = get_theme(theme)
     colors = theme_config["colors"]
-    
+
     volume_colors = [
         colors["positive"] if df["Close"].iloc[i] >= df["Open"].iloc[i] else colors["negative"]
         for i in range(len(df))
     ]
-    
+
     fig = go.Figure()
     fig.add_trace(
         go.Bar(
@@ -131,7 +135,7 @@ def volume_chart(
             hovertemplate="Date: %{x}<br>Volume: %{y:,.0f}<extra></extra>",
         )
     )
-    
+
     layout = create_layout(
         theme_config,
         title=f"{ticker} Volume" if ticker else "Volume",
@@ -140,7 +144,7 @@ def volume_chart(
         y_title="Volume",
     )
     fig.update_layout(**layout)
-    
+
     return fig
 
 
@@ -152,9 +156,9 @@ def drawdown_chart(
 ) -> go.Figure:
     theme_config = get_theme(theme)
     colors = theme_config["colors"]
-    
+
     dd = drawdown_series(prices)
-    
+
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(
@@ -168,10 +172,10 @@ def drawdown_chart(
             hovertemplate="Drawdown: %{y:.2f}%<extra></extra>",
         )
     )
-    
+
     max_dd_idx = dd.idxmin()
     max_dd_val = dd.min() * 100
-    
+
     fig.add_trace(
         go.Scatter(
             x=[max_dd_idx],
@@ -185,7 +189,7 @@ def drawdown_chart(
             hovertemplate=f"Max Drawdown: {max_dd_val:.2f}%<extra></extra>",
         )
     )
-    
+
     layout = create_layout(
         theme_config,
         title=f"{ticker} Drawdown" if ticker else "Drawdown",
@@ -195,7 +199,7 @@ def drawdown_chart(
     )
     fig.update_layout(**layout)
     fig.update_yaxes(range=[min(dd * 100) * 1.2, 5])
-    
+
     return fig
 
 
@@ -208,9 +212,9 @@ def rolling_vol_chart(
 ) -> go.Figure:
     theme_config = get_theme(theme)
     colors = theme_config["colors"]
-    
+
     roll_vol = calc_rolling_volatility(prices, window=window) * 100
-    
+
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(
@@ -224,7 +228,7 @@ def rolling_vol_chart(
             hovertemplate="Volatility: %{y:.1f}%<extra></extra>",
         )
     )
-    
+
     avg_vol = roll_vol.mean()
     fig.add_hline(
         y=avg_vol,
@@ -234,16 +238,20 @@ def rolling_vol_chart(
         annotation_position="right",
         annotation_font_color=colors["text_muted"],
     )
-    
+
     layout = create_layout(
         theme_config,
-        title=f"{ticker} Rolling Volatility ({window}D)" if ticker else f"Rolling Volatility ({window}D)",
+        title=(
+            f"{ticker} Rolling Volatility ({window}D)"
+            if ticker
+            else f"Rolling Volatility ({window}D)"
+        ),
         height=height,
         show_legend=False,
         y_title="Annualized Volatility (%)",
     )
     fig.update_layout(**layout)
-    
+
     return fig
 
 
@@ -256,16 +264,16 @@ def rolling_sharpe_chart(
 ) -> go.Figure:
     theme_config = get_theme(theme)
     colors = theme_config["colors"]
-    
+
     roll_sharpe = calc_rolling_sharpe(prices, window=window)
-    
+
     fig = go.Figure()
-    
+
     positive_sharpe = roll_sharpe.copy()
     positive_sharpe[positive_sharpe < 0] = np.nan
     negative_sharpe = roll_sharpe.copy()
     negative_sharpe[negative_sharpe >= 0] = np.nan
-    
+
     fig.add_trace(
         go.Scatter(
             x=positive_sharpe.index,
@@ -278,7 +286,7 @@ def rolling_sharpe_chart(
             hovertemplate="Sharpe: %{y:.2f}<extra></extra>",
         )
     )
-    
+
     fig.add_trace(
         go.Scatter(
             x=negative_sharpe.index,
@@ -291,19 +299,23 @@ def rolling_sharpe_chart(
             hovertemplate="Sharpe: %{y:.2f}<extra></extra>",
         )
     )
-    
+
     fig.add_hline(y=0, line_color=colors["grid"], line_width=1)
     fig.add_hline(y=1, line_dash="dash", line_color=colors["text_muted"], line_width=1, opacity=0.5)
-    
+
     layout = create_layout(
         theme_config,
-        title=f"{ticker} Rolling Sharpe Ratio ({window}D)" if ticker else f"Rolling Sharpe Ratio ({window}D)",
+        title=(
+            f"{ticker} Rolling Sharpe Ratio ({window}D)"
+            if ticker
+            else f"Rolling Sharpe Ratio ({window}D)"
+        ),
         height=height,
         show_legend=False,
         y_title="Sharpe Ratio",
     )
     fig.update_layout(**layout)
-    
+
     return fig
 
 
@@ -315,15 +327,15 @@ def monthly_heatmap(
 ) -> go.Figure:
     theme_config = get_theme(theme)
     colors = theme_config["colors"]
-    
+
     monthly_df = calc_monthly_returns(prices)
-    
+
     z_values = monthly_df.values * 100
     x_labels = monthly_df.columns.tolist()
     y_labels = monthly_df.index.tolist()
-    
+
     text_matrix = [[f"{val:.1f}%" if not np.isnan(val) else "" for val in row] for row in z_values]
-    
+
     fig = go.Figure()
     fig.add_trace(
         go.Heatmap(
@@ -345,7 +357,7 @@ def monthly_heatmap(
             hovertemplate="Year: %{y}<br>Month: %{x}<br>Return: %{z:.2f}%<extra></extra>",
         )
     )
-    
+
     layout = create_layout(
         theme_config,
         title=f"{ticker} Monthly Returns" if ticker else "Monthly Returns",
@@ -356,7 +368,7 @@ def monthly_heatmap(
     layout["yaxis"]["dtick"] = 1
     layout["yaxis"]["autorange"] = "reversed"
     fig.update_layout(**layout)
-    
+
     return fig
 
 
@@ -369,9 +381,9 @@ def performance_chart(
     theme_config = get_theme(theme)
     colors = theme_config["colors"]
     palette = theme_config["palette"]
-    
+
     fig = go.Figure()
-    
+
     for i, (ticker, prices) in enumerate(prices_dict.items()):
         if normalize:
             y_data = (prices / prices.iloc[0] - 1) * 100
@@ -379,7 +391,7 @@ def performance_chart(
         else:
             y_data = prices
             suffix = ""
-        
+
         fig.add_trace(
             go.Scatter(
                 x=prices.index,
@@ -390,7 +402,7 @@ def performance_chart(
                 hovertemplate=f"{ticker}: %{{y:.2f}}{suffix}<extra></extra>",
             )
         )
-    
+
     layout = create_layout(
         theme_config,
         title="Performance Comparison",
@@ -398,10 +410,10 @@ def performance_chart(
         y_title="Return (%)" if normalize else "Price ($)",
     )
     fig.update_layout(**layout)
-    
+
     if normalize:
         fig.add_hline(y=0, line_color=colors["grid"], line_width=1)
-    
+
     return fig
 
 
@@ -413,16 +425,16 @@ def risk_return_scatter(
     theme_config = get_theme(theme)
     colors = theme_config["colors"]
     palette = theme_config["palette"]
-    
+
     fig = go.Figure()
-    
+
     tickers = list(metrics.keys())
     vols = [metrics[t]["volatility"] * 100 for t in tickers]
     cagrs = [metrics[t]["cagr"] * 100 for t in tickers]
     sharpes = [metrics[t]["sharpe_ratio"] for t in tickers]
-    
+
     marker_sizes = [max(20, min(50, s * 20)) if s > 0 else 20 for s in sharpes]
-    
+
     for i, ticker in enumerate(tickers):
         fig.add_trace(
             go.Scatter(
@@ -446,7 +458,7 @@ def risk_return_scatter(
                 ),
             )
         )
-    
+
     min_vol, max_vol = min(vols), max(vols)
     vol_range = np.linspace(min_vol * 0.8, max_vol * 1.2, 50)
     for sharpe in [0.5, 1.0, 1.5]:
@@ -462,7 +474,7 @@ def risk_return_scatter(
                 hoverinfo="skip",
             )
         )
-    
+
     layout = create_layout(
         theme_config,
         title="Risk-Return Analysis",
@@ -472,7 +484,7 @@ def risk_return_scatter(
     )
     layout["yaxis"]["side"] = "left"
     fig.update_layout(**layout)
-    
+
     return fig
 
 
@@ -483,14 +495,14 @@ def correlation_matrix(
 ) -> go.Figure:
     theme_config = get_theme(theme)
     colors = theme_config["colors"]
-    
+
     corr = calc_correlation_matrix(prices_df)
-    
+
     z_values = corr.values
     labels = corr.columns.tolist()
-    
+
     text_matrix = [[f"{val:.2f}" for val in row] for row in z_values]
-    
+
     fig = go.Figure()
     fig.add_trace(
         go.Heatmap(
@@ -514,7 +526,7 @@ def correlation_matrix(
             hovertemplate="%{x} vs %{y}<br>Correlation: %{z:.3f}<extra></extra>",
         )
     )
-    
+
     layout = create_layout(
         theme_config,
         title="Correlation Matrix",
@@ -522,7 +534,7 @@ def correlation_matrix(
         show_legend=False,
     )
     fig.update_layout(**layout)
-    
+
     return fig
 
 
@@ -536,9 +548,9 @@ def cumulative_returns_chart(
 ) -> go.Figure:
     theme_config = get_theme(theme)
     colors = theme_config["colors"]
-    
+
     cum_ret = cumulative_returns(prices) * 100
-    
+
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(
@@ -552,7 +564,7 @@ def cumulative_returns_chart(
             hovertemplate="Return: %{y:.2f}%<extra></extra>",
         )
     )
-    
+
     if benchmark_prices is not None:
         bench_cum_ret = cumulative_returns(benchmark_prices) * 100
         fig.add_trace(
@@ -565,9 +577,9 @@ def cumulative_returns_chart(
                 hovertemplate="Benchmark: %{y:.2f}%<extra></extra>",
             )
         )
-    
+
     fig.add_hline(y=0, line_color=colors["grid"], line_width=1)
-    
+
     layout = create_layout(
         theme_config,
         title=f"{ticker} Cumulative Returns" if ticker else "Cumulative Returns",
@@ -575,7 +587,7 @@ def cumulative_returns_chart(
         y_title="Cumulative Return (%)",
     )
     fig.update_layout(**layout)
-    
+
     return fig
 
 
@@ -587,7 +599,7 @@ def candlestick_chart(
 ) -> go.Figure:
     theme_config = get_theme(theme)
     colors = theme_config["colors"]
-    
+
     fig = go.Figure()
     fig.add_trace(
         go.Candlestick(
@@ -601,7 +613,7 @@ def candlestick_chart(
             decreasing={"line": {"color": colors["negative"]}, "fillcolor": colors["negative"]},
         )
     )
-    
+
     layout = create_layout(
         theme_config,
         title=f"{ticker} Candlestick" if ticker else "Candlestick",
@@ -611,5 +623,5 @@ def candlestick_chart(
     )
     layout["xaxis"]["rangeslider"] = {"visible": False}
     fig.update_layout(**layout)
-    
+
     return fig

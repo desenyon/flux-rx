@@ -26,15 +26,16 @@ from flux_rx.themes import get_theme, DEFAULT_THEME, get_heatmap_colorscale
 def _create_main_chart(df: pd.DataFrame, ticker: str, theme_config: dict) -> go.Figure:
     colors = theme_config["colors"]
     palette = theme_config["palette"]
-    
+
     fig = make_subplots(
-        rows=3, cols=1,
+        rows=3,
+        cols=1,
         shared_xaxes=True,
         vertical_spacing=0.02,
         row_heights=[0.6, 0.2, 0.2],
-        specs=[[{"secondary_y": False}], [{"secondary_y": False}], [{"secondary_y": False}]]
+        specs=[[{"secondary_y": False}], [{"secondary_y": False}], [{"secondary_y": False}]],
     )
-    
+
     fig.add_trace(
         go.Candlestick(
             x=df.index,
@@ -43,13 +44,20 @@ def _create_main_chart(df: pd.DataFrame, ticker: str, theme_config: dict) -> go.
             low=df["Low"],
             close=df["Close"],
             name="OHLC",
-            increasing={"line": {"color": colors["positive"], "width": 1}, "fillcolor": colors["positive"]},
-            decreasing={"line": {"color": colors["negative"], "width": 1}, "fillcolor": colors["negative"]},
+            increasing={
+                "line": {"color": colors["positive"], "width": 1},
+                "fillcolor": colors["positive"],
+            },
+            decreasing={
+                "line": {"color": colors["negative"], "width": 1},
+                "fillcolor": colors["negative"],
+            },
             showlegend=False,
         ),
-        row=1, col=1
+        row=1,
+        col=1,
     )
-    
+
     for i, window in enumerate([20, 50, 200]):
         if len(df) >= window:
             ma = df["Close"].rolling(window=window).mean()
@@ -62,9 +70,10 @@ def _create_main_chart(df: pd.DataFrame, ticker: str, theme_config: dict) -> go.
                     line={"color": palette[i % len(palette)], "width": 1.5},
                     hovertemplate=f"MA{window}: $%{{y:.2f}}<extra></extra>",
                 ),
-                row=1, col=1
+                row=1,
+                col=1,
             )
-    
+
     volume_colors = [
         colors["positive"] if df["Close"].iloc[i] >= df["Open"].iloc[i] else colors["negative"]
         for i in range(len(df))
@@ -79,9 +88,10 @@ def _create_main_chart(df: pd.DataFrame, ticker: str, theme_config: dict) -> go.
             showlegend=False,
             hovertemplate="Vol: %{y:,.0f}<extra></extra>",
         ),
-        row=2, col=1
+        row=2,
+        col=1,
     )
-    
+
     dd = drawdown_series(df["Close"])
     fig.add_trace(
         go.Scatter(
@@ -95,9 +105,10 @@ def _create_main_chart(df: pd.DataFrame, ticker: str, theme_config: dict) -> go.
             showlegend=False,
             hovertemplate="DD: %{y:.2f}%<extra></extra>",
         ),
-        row=3, col=1
+        row=3,
+        col=1,
     )
-    
+
     fig.update_layout(
         template="plotly_dark",
         paper_bgcolor="rgba(0,0,0,0)",
@@ -113,72 +124,112 @@ def _create_main_chart(df: pd.DataFrame, ticker: str, theme_config: dict) -> go.
             "xanchor": "left",
             "x": 0,
             "bgcolor": "rgba(0,0,0,0)",
-            "font": {"size": 11}
+            "font": {"size": 11},
         },
         hovermode="x unified",
         xaxis={"showgrid": False, "zeroline": False, "showticklabels": False},
         xaxis2={"showgrid": False, "zeroline": False, "showticklabels": False},
         xaxis3={"showgrid": True, "gridcolor": colors["grid"], "zeroline": False},
-        yaxis={"showgrid": True, "gridcolor": colors["grid"], "zeroline": False, "side": "right", "tickformat": "$,.0f"},
+        yaxis={
+            "showgrid": True,
+            "gridcolor": colors["grid"],
+            "zeroline": False,
+            "side": "right",
+            "tickformat": "$,.0f",
+        },
         yaxis2={"showgrid": False, "zeroline": False, "side": "right", "tickformat": ".2s"},
-        yaxis3={"showgrid": True, "gridcolor": colors["grid"], "zeroline": True, "zerolinecolor": colors["grid"], "side": "right", "ticksuffix": "%"},
+        yaxis3={
+            "showgrid": True,
+            "gridcolor": colors["grid"],
+            "zeroline": True,
+            "zerolinecolor": colors["grid"],
+            "side": "right",
+            "ticksuffix": "%",
+        },
     )
-    
+
     return fig
 
 
-def _create_analytics_charts(prices: pd.Series, benchmark_prices: Optional[pd.Series], theme_config: dict) -> go.Figure:
+def _create_analytics_charts(
+    prices: pd.Series, benchmark_prices: Optional[pd.Series], theme_config: dict
+) -> go.Figure:
     colors = theme_config["colors"]
-    
+
     fig = make_subplots(
-        rows=2, cols=2,
-        subplot_titles=("Cumulative Returns", "Rolling Volatility (21D)", "Rolling Sharpe (63D)", "Returns Distribution"),
+        rows=2,
+        cols=2,
+        subplot_titles=(
+            "Cumulative Returns",
+            "Rolling Volatility (21D)",
+            "Rolling Sharpe (63D)",
+            "Returns Distribution",
+        ),
         vertical_spacing=0.12,
         horizontal_spacing=0.08,
     )
-    
+
     cum_ret = cumulative_returns(prices) * 100
     fig.add_trace(
-        go.Scatter(x=cum_ret.index, y=cum_ret, name="Asset", line_color=colors["accent"], fill="tozeroy"),
-        row=1, col=1
+        go.Scatter(
+            x=cum_ret.index, y=cum_ret, name="Asset", line_color=colors["accent"], fill="tozeroy"
+        ),
+        row=1,
+        col=1,
     )
-    
+
     vol = rolling_volatility(prices) * 100
     fig.add_trace(
         go.Scatter(x=vol.index, y=vol, name="Volatility", line_color=colors["secondary"]),
-        row=1, col=2
+        row=1,
+        col=2,
     )
-    
+
     sharpe = rolling_sharpe(prices)
     fig.add_trace(
         go.Scatter(x=sharpe.index, y=sharpe, name="Sharpe", line_color=colors["positive"]),
-        row=2, col=1
+        row=2,
+        col=1,
     )
-    
+
     rets = daily_returns(prices) * 100
     fig.add_trace(
-        go.Histogram(x=rets, name="Distribution", marker_color=colors["accent"]),
-        row=2, col=2
+        go.Histogram(x=rets, name="Distribution", marker_color=colors["accent"]), row=2, col=2
     )
-    
-    fig.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", height=500, showlegend=False)
+
+    fig.update_layout(
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        height=500,
+        showlegend=False,
+    )
     return fig
 
 
-def _create_heatmap(prices: pd.Series, theme_config: dict, theme_name: str = DEFAULT_THEME) -> go.Figure:
+def _create_heatmap(
+    prices: pd.Series, theme_config: dict, theme_name: str = DEFAULT_THEME
+) -> go.Figure:
     colors = theme_config["colors"]
     monthly_df = monthly_returns(prices)
     z_values = monthly_df.values * 100
-    
-    fig = go.Figure(data=go.Heatmap(
-        z=z_values,
-        x=monthly_df.columns,
-        y=[str(y) for y in monthly_df.index],
-        colorscale=get_heatmap_colorscale(theme_name),
-        text=[[f"{v:.1f}%" if not np.isnan(v) else "" for v in row] for row in z_values],
-        texttemplate="%{text}",
-    ))
-    fig.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", height=300)
+
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=z_values,
+            x=monthly_df.columns,
+            y=[str(y) for y in monthly_df.index],
+            colorscale=get_heatmap_colorscale(theme_name),
+            text=[[f"{v:.1f}%" if not np.isnan(v) else "" for v in row] for row in z_values],
+            texttemplate="%{text}",
+        )
+    )
+    fig.update_layout(
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        height=300,
+    )
     return fig
 
 
@@ -201,7 +252,7 @@ def generate_report(
             raise ValueError(f"No data for {ticker}")
         prices = df["Close"]
         info = get_info(ticker)
-        
+
         benchmark_prices = None
         if benchmark:
             try:
@@ -215,21 +266,39 @@ def generate_report(
 
         metrics = compute_metrics(prices, benchmark_prices)
         formatted = format_metrics(metrics)
-        
+
         main_chart = _create_main_chart(df, ticker, theme_config)
         analytics_chart = _create_analytics_charts(prices, benchmark_prices, theme_config)
         heatmap_chart = _create_heatmap(prices, theme_config, theme)
-        
-        cards = "".join([f'<div class="metric-card"><div class="metric-label">{l}</div><div class="metric-value">{formatted.get(k, "N/A")}</div></div>' 
-                        for l, k in [("CAGR", "cagr"), ("Vol", "volatility"), ("Sharpe", "sharpe_ratio"), ("Max DD", "max_drawdown")]])
-        
-        rows = "".join([f'<div class="info-row"><span class="info-label">{l}</span><span class="info-value">{info.get(k, "N/A")}</span></div>'
-                       for l, k in [("Industry", "industry"), ("Sector", "sector"), ("Cap", "market_cap_fmt"), ("Market", "exchange")]])
+
+        cards = "".join(
+            [
+                f'<div class="metric-card"><div class="metric-label">{l}</div><div class="metric-value">{formatted.get(k, "N/A")}</div></div>'
+                for l, k in [
+                    ("CAGR", "cagr"),
+                    ("Vol", "volatility"),
+                    ("Sharpe", "sharpe_ratio"),
+                    ("Max DD", "max_drawdown"),
+                ]
+            ]
+        )
+
+        rows = "".join(
+            [
+                f'<div class="info-row"><span class="info-label">{l}</span><span class="info-value">{info.get(k, "N/A")}</span></div>'
+                for l, k in [
+                    ("Industry", "industry"),
+                    ("Sector", "sector"),
+                    ("Cap", "market_cap_fmt"),
+                    ("Market", "exchange"),
+                ]
+            ]
+        )
 
         current_price = float(prices.iloc[-1])
         prev_price = float(prices.iloc[-2]) if len(prices) > 1 else current_price
         day_change = (current_price - prev_price) / prev_price * 100
-        
+
         html = SINGLE_REPORT_TEMPLATE.format(
             ticker=ticker,
             ticker_name=info.get("name", ticker),
@@ -266,28 +335,47 @@ def generate_comparison_report(
     """Generate a multi-ticker comparison report."""
     try:
         from flux_rx.data import fetch_multiple, align_dataframes
+
         theme_config = get_theme(theme)
         palette = theme_config["palette"]
-        
+
         data = fetch_multiple(tickers, period=period)
         prices_df = align_dataframes(data)
         if prices_df.empty:
             raise ValueError("No overlapping data.")
-            
+
         all_metrics = {t: compute_metrics(prices_df[t]) for t in tickers}
-        
+
         perf_fig = go.Figure()
         for i, t in enumerate(tickers):
             norm = (prices_df[t] / prices_df[t].iloc[0] - 1) * 100
-            perf_fig.add_trace(go.Scatter(x=norm.index, y=norm, name=t, line_color=palette[i % len(palette)]))
-        perf_fig.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", height=500)
-        
+            perf_fig.add_trace(
+                go.Scatter(x=norm.index, y=norm, name=t, line_color=palette[i % len(palette)])
+            )
+        perf_fig.update_layout(
+            template="plotly_dark",
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            height=500,
+        )
+
         from flux_rx.charts import risk_return_scatter, correlation_matrix
+
         risk_fig = risk_return_scatter(all_metrics, theme=theme, height=400)
         corr_fig = correlation_matrix(prices_df, theme=theme, height=400)
-        
-        m_rows = "".join([f"<tr><td>{t}</td><td>{format_metrics(all_metrics[t])['cagr']}</td><td>{format_metrics(all_metrics[t])['volatility']}</td><td>{format_metrics(all_metrics[t])['max_drawdown']}</td><td>{format_metrics(all_metrics[t])['sharpe_ratio']}</td><td>{format_metrics(all_metrics[t])['sortino_ratio']}</td><td>{format_metrics(all_metrics[t])['calmar_ratio']}</td></tr>" for t in tickers])
-        badges = "".join([f'<span class="ticker-badge" style="border-left: 3px solid {palette[i % len(palette)]}">{t}</span>' for i, t in enumerate(tickers)])
+
+        m_rows = "".join(
+            [
+                f"<tr><td>{t}</td><td>{format_metrics(all_metrics[t])['cagr']}</td><td>{format_metrics(all_metrics[t])['volatility']}</td><td>{format_metrics(all_metrics[t])['max_drawdown']}</td><td>{format_metrics(all_metrics[t])['sharpe_ratio']}</td><td>{format_metrics(all_metrics[t])['sortino_ratio']}</td><td>{format_metrics(all_metrics[t])['calmar_ratio']}</td></tr>"
+                for t in tickers
+            ]
+        )
+        badges = "".join(
+            [
+                f'<span class="ticker-badge" style="border-left: 3px solid {palette[i % len(palette)]}">{t}</span>'
+                for i, t in enumerate(tickers)
+            ]
+        )
 
         html = COMPARISON_REPORT_TEMPLATE.format(
             css=COMPARISON_CSS,
