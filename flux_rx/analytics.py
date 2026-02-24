@@ -6,8 +6,22 @@ from typing import Optional, Union
 import numpy as np
 import pandas as pd
 
+from flux_rx.exceptions import FluxComputeError
+from flux_rx.logger import get_logger
+
+logger = get_logger(__name__)
+
 TRADING_DAYS_PER_YEAR = 252
 _RISK_FREE_RATE = 0.04
+
+
+def _validate_prices(prices: pd.Series, name: str = "prices") -> None:
+    if prices is None or prices.empty:
+        logger.error(f"Cannot compute metrics on empty series: {name}")
+        raise FluxComputeError(f"Input series '{name}' is empty.")
+    if len(prices) < 2:
+        logger.error(f"Not enough data points in {name} to compute returns.")
+        raise FluxComputeError(f"Input series '{name}' must have at least 2 data points.")
 
 
 def set_risk_free_rate(rate: float) -> None:
@@ -22,6 +36,7 @@ def get_risk_free_rate() -> float:
 
 
 def daily_returns(prices: pd.Series) -> pd.Series:
+    _validate_prices(prices)
     return prices.pct_change().dropna()
 
 
@@ -35,12 +50,17 @@ def total_return(prices: pd.Series) -> float:
 
 
 def cagr(prices: pd.Series) -> float:
+    _validate_prices(prices)
     total_days = (prices.index[-1] - prices.index[0]).days
     if total_days <= 0:
         return 0.0
     years = total_days / 365.25
     total_ret = total_return(prices)
-    return (1 + total_ret) ** (1 / years) - 1
+    try:
+        return (1 + total_ret) ** (1 / years) - 1
+    except Exception as e:
+        logger.error(f"Error calculating CAGR: {e}")
+        raise FluxComputeError(f"Error calculating CAGR: {e}") from e
 
 
 def volatility(prices: pd.Series, annualize: bool = True) -> float:
@@ -131,7 +151,7 @@ def rolling_beta(
     returns = daily_returns(prices)
     bench_returns = daily_returns(benchmark_prices)
     aligned = pd.DataFrame({"asset": returns, "bench": bench_returns}).dropna()
-    
+
     betas = []
     for i in range(len(aligned)):
         if i < window:
@@ -168,29 +188,90 @@ def alpha(
     return asset_return - (risk_free_rate + b * (bench_return - risk_free_rate))
 
 
+def tracking_error(prices: pd.Series, benchmark_prices: pd.Series, annualize: bool = True) -> float:
+    """Calculate the tracking error (standard deviation of active returns)."""
+    returns = daily_returns(prices)
+    bench_returns = daily_returns(benchmark_prices)
+    aligned = pd.DataFrame({"asset": returns, "bench": bench_returns}).dropna()
+    active_returns = aligned["asset"] - aligned["bench"]
+    te = active_returns.std()
+    if annualize:
+        te *= np.sqrt(TRADING_DAYS_PER_YEAR)
+    return te
+
+
+def information_ratio(prices: pd.Series, benchmark_prices: pd.Series) -> float:
+    """Calculate the Information Ratio (Active Return / Tracking Error)."""
+    asset_return = cagr(prices)
+    bench_return = cagr(benchmark_prices)
+    active_return = asset_return - bench_return
+    te = tracking_error(prices, benchmark_prices)
+    if te == 0:
+        return 0.0
+    return active_return / te
+
+
+def z_score(prices: pd.Series, window: int = 20) -> pd.Series:
+    """Calculate the rolling Z-score of prices."""
+    _validate_prices(prices, "prices (z-score)")
+    roll_mean = prices.rolling(window=window).mean()
+    roll_std = prices.rolling(window=window).std()
+    return (prices - roll_mean) / roll_std
+
+
+def hurst_exponent(prices: pd.Series, max_lag: int = 20) -> float:
+    """Calculate the Hurst Exponent (measure of mean reversion / trending)."""
+    if len(prices) < max_lag * 2:
+        return 0.5  # Default to random walk if not enough data
+
+    returns = np.log(prices / prices.shift(1)).dropna()
+    lags = range(2, max_lag)
+    tau = [np.sqrt(np.std(np.subtract(returns[lag:], returns[:-lag]))) for lag in lags]
+
+    try:
+        poly = np.polyfit(np.log(lags), np.log(tau), 1)
+        return poly[0] * 2.0
+    except Exception:
+        return 0.5
+
+
 def monthly_returns(prices: pd.Series) -> pd.DataFrame:
     monthly = prices.resample("ME").last()
     returns = monthly.pct_change().dropna()
     # Get year and month from DatetimeIndex
     dates = pd.to_datetime(returns.index)
-    df = pd.DataFrame({
-        "year": dates.year,
-        "month": dates.month,
-        "return": returns.values,
-    })
+    df = pd.DataFrame(
+        {
+            "year": dates.year,
+            "month": dates.month,
+            "return": returns.values,
+        }
+    )
     pivot = df.pivot(index="year", columns="month", values="return")
-    all_months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", 
-                  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-    
+    all_months = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+    ]
+
     # Reindex to ensure all months are present as columns
-    present_months = [all_months[i-1] for i in sorted(df["month"].unique())]
+    present_months = [all_months[i - 1] for i in sorted(df["month"].unique())]
     pivot.columns = pd.Index(present_months)
-    
+
     # Fill missing months with NaN and ensure order
     for month in all_months:
         if month not in pivot.columns:
             pivot[month] = np.nan
-            
+
     return pivot[all_months]
 
 
@@ -215,22 +296,24 @@ def detect_regime(
     long_ma = prices.rolling(window=long_window).mean()
     returns = daily_returns(prices)
     roll_vol = returns.rolling(window=vol_window).std() * np.sqrt(TRADING_DAYS_PER_YEAR)
-    
+
     trend = pd.Series(index=prices.index, dtype=str)
     trend[short_ma > long_ma] = "uptrend"
     trend[short_ma <= long_ma] = "downtrend"
-    
+
     volatility_regime = pd.Series(index=prices.index, dtype=str)
     volatility_regime[roll_vol > vol_threshold] = "high_vol"
     volatility_regime[roll_vol <= vol_threshold] = "low_vol"
-    
-    regime = pd.DataFrame({
-        "trend": trend,
-        "volatility_regime": volatility_regime,
-        "short_ma": short_ma,
-        "long_ma": long_ma,
-        "rolling_vol": roll_vol,
-    })
+
+    regime = pd.DataFrame(
+        {
+            "trend": trend,
+            "volatility_regime": volatility_regime,
+            "short_ma": short_ma,
+            "long_ma": long_ma,
+            "rolling_vol": roll_vol,
+        }
+    )
     return regime
 
 
@@ -267,9 +350,10 @@ def compute_metrics(
     benchmark_prices: Optional[pd.Series] = None,
     risk_free_rate: Optional[float] = None,
 ) -> dict:
+    _validate_prices(prices)
     if risk_free_rate is None:
         risk_free_rate = _RISK_FREE_RATE
-    
+
     metrics = {
         "total_return": total_return(prices),
         "cagr": cagr(prices),
@@ -283,11 +367,13 @@ def compute_metrics(
         "cvar_95": conditional_va_risk(prices, 0.95),
         "omega": omega_ratio(prices),
     }
-    
+
     if benchmark_prices is not None:
         metrics["beta"] = beta(prices, benchmark_prices)
         metrics["alpha"] = alpha(prices, benchmark_prices, risk_free_rate)
-    
+        metrics["tracking_error"] = tracking_error(prices, benchmark_prices)
+        metrics["info_ratio"] = information_ratio(prices, benchmark_prices)
+
     return metrics
 
 
@@ -302,6 +388,8 @@ def format_metrics(metrics: dict) -> dict:
         "calmar_ratio": lambda x: f"{x:.2f}",
         "beta": lambda x: f"{x:.2f}",
         "alpha": lambda x: f"{x * 100:.2f}%",
+        "tracking_error": lambda x: f"{x * 100:.2f}%",
+        "info_ratio": lambda x: f"{x:.2f}",
     }
     return {k: formatters.get(k, lambda x: f"{x:.2f}")(v) for k, v in metrics.items()}
 
@@ -312,11 +400,11 @@ def compute_rolling_metrics(
 ) -> pd.DataFrame:
     if windows is None:
         windows = {"volatility": 21, "sharpe": 63}
-    
+
     result = pd.DataFrame(index=prices.index)
     result["price"] = prices
     result["rolling_vol"] = rolling_volatility(prices, window=windows["volatility"])
     result["rolling_sharpe"] = rolling_sharpe(prices, window=windows["sharpe"])
     result["drawdown"] = drawdown_series(prices)
-    
+
     return result
