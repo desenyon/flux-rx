@@ -1,120 +1,80 @@
 # Flux-RX
 
-**A Finance Python Package**
+> High-Performance Financial Engineering & Analytics Framework
 
-Flux-RX makes financial analysis and visualization effortless. Generate publication-quality interactive charts, reports, and dashboards for any stock, ETF, or index with minimal code.
+**Flux-RX** is an advanced, institutional-grade Python framework designed for rapid financial data analysis, portfolio optimization, and beautifully rendered interactive dashboards. Replacing disjointed scripts with a cohesive system, Flux-RX implements strict typing, rigorous error handling, and a sophisticated terminal UI.
+
+---
+
+## Capabilities
+
+*   **Robust Data Ingestion**: High-speed, cached acquisition of market data and metadata via Yahoo Finance.
+*   **Deep Analytics Engine**: Compute comprehensive metrics including CAGR, Volatility, Sharpe Ratio, Maximum Drawdown, Value at Risk (VaR), Conditional VaR, Information Ratio, Tracking Error, Hurst Exponent, and Z-Scores.
+*   **Terminal Interface**: A best-in-class CLI built on `rich` that renders stunning, color-coded tables for metrics, screening, and optimization natively in the console.
+*   **Dynamic Dashboard**: A fully responsive, sidebar-navigation local web application (`dash-bootstrap-components`) for profound visual analysis.
+*   **Hyper-Professional Layouts**: Native support for "Obsidian", "Terminal", "Monochrome", and "Light Pro" themes. Strictly adhering to institutional aesthetics (no emojis, no purple elements).
+*   **Portfolio Architecture**: Conduct Modern Portfolio Theory (MPT) optimization targeting Maximum Sharpe, Minimum Volatility, or Maximum Return.
 
 ## Installation
 
+Ensure you have Python 3.10+ installed.
+
 ```bash
+# Clone the repository
+git clone https://github.com/your-org/flux-rx.git
+cd flux-rx
+
+# Install via setup.py (or pip)
 pip install -e .
 ```
 
-## Quick Start
+*Note: For development capabilities (like `mypy` and `pytest`), install with `pip install -e .[dev]`.*
 
-```python
-import flux_rx as fx
+## Command-Line Interface
 
-# Generate a complete analysis report
-fx.quick("AAPL", period="5y", benchmark="SPY", save="AAPL.html")
+The `flux-rx` command serves as your entry point to all operations.
 
-# Create individual charts
-fx.chart("SPY", kind="price", period="10y")
-fx.chart("AAPL", kind="drawdown")
-fx.chart("TSLA", kind="monthly")
-
-# Compare multiple assets
-fx.compare(["QQQ", "SPY", "IWM"], period="5y", kind="risk_return")
-
-# Launch interactive dashboard
-fx.app()
+### Quick Metrics
+Extract fundamental metrics and calculate ratios instantly.
+```bash
+flux-rx metrics AAPL --period 5y
 ```
 
-## Features
-
-### Data
-- Automatic data fetching via yfinance
-- Local caching to avoid repeated downloads
-- Company metadata and fundamentals
-- Support for stocks, ETFs, and indices
-
-### Analytics
-- Daily and cumulative returns
-- CAGR, volatility, max drawdown
-- Sharpe, Sortino, and Calmar ratios
-- Rolling volatility and rolling Sharpe
-- Beta and alpha vs benchmark
-- Monthly returns analysis
-
-### Charts
-- Price charts with moving averages
-- Candlestick OHLC charts
-- Volume analysis
-- Drawdown curves
-- Rolling volatility and Sharpe charts
-- Monthly returns heatmaps
-- Risk-return scatter plots
-- Correlation matrices
-
-### Reports
-- Interactive HTML reports
-- Single-ticker analysis
-- Multi-ticker comparison
-- All charts in one exportable file
-
-### Dashboard
-- Full web application via Dash
-- Single ticker analysis mode
-- Multi-ticker comparison mode
-
-## API Reference
-
-### `fx.quick(ticker, period, benchmark, save)`
-Generate a complete analysis report.
-
-```python
-fx.quick("AAPL", period="5y", benchmark="SPY", save="report.html")
+### Portfolio Screener
+Compare, rank, and evaluate multiple assets simultaneously.
+```bash
+flux-rx screen AAPL MSFT GOOGL NVDA TSLA --sort sharpe_ratio
 ```
 
-### `fx.chart(ticker, kind, period)`
-Create individual charts.
-
-```python
-# Chart types: price, volume, drawdown, volatility, sharpe, monthly, cumulative, candlestick
-fx.chart("AAPL", kind="price", period="2y")
+### Modern Portfolio Optimization
+Calculate the optimal weightings for a basket of assets.
+```bash
+flux-rx optimize AAPL MSFT GOOGL --objective sharpe
 ```
 
-### `fx.compare(tickers, period, kind)`
-Compare multiple assets.
+### Static Reporting & Export
+Generate a sleek static HTML report or export raw data to your preferred format.
+```bash
+# Generate interactive HTML report
+flux-rx report AAPL --period max --theme obsidian
 
-```python
-# Comparison types: performance, risk_return, correlation, report
-fx.compare(["AAPL", "MSFT", "GOOGL"], period="5y", kind="performance")
+# Export to CSV/JSON/Excel
+flux-rx export AAPL --format csv --path my_data.csv
 ```
 
-### `fx.app()`
-Launch the interactive dashboard.
-
-```python
-fx.app(port=8050)
+### Interactive Dashboard
+Launch the heavy-duty analytical terminal in your browser.
+```bash
+flux-rx dashboard --port 8050
 ```
 
-### `fx.metrics(ticker, period, benchmark)`
-Get computed metrics as a dictionary.
+## System Architecture
 
-```python
-metrics = fx.metrics("AAPL", period="5y", benchmark="SPY")
-# Returns: cagr, volatility, max_drawdown, sharpe_ratio, sortino_ratio, etc.
-```
-
-### `fx.info(ticker)`
-Get company/security information.
-
-```python
-info = fx.info("AAPL")
-# Returns: name, sector, industry, market_cap, pe_ratio, etc.
-```
+Flux-RX v2.0 introduces several architectural upgrades:
+*   **`flux_rx.exceptions`**: A custom exception hierarchy (`FluxDataError`, `FluxComputeError`, etc.) ensuring graceful failure states without arbitrary Python stack traces.
+*   **`flux_rx.logger`**: Structured, console-agnostic logging powered by `rich`, replacing arbitrary `print` statements.
+*   **`flux_rx.analytics`**: Hardened numerical methods with explicit input validation on raw price vectors.
 
 ## License
 
-MIT License
+MIT License. See `LICENSE` for details.
