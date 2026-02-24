@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Optional, Union, Literal
 
+import pandas as pd
 import plotly.graph_objects as go
 
 from flux_rx.export import export as export_file
@@ -50,11 +51,11 @@ def quick(
 ) -> str:
     """
     Generate a complete analysis report for a single ticker.
-    
+
     This is the primary one-liner API for Flux-RX. It fetches data,
     computes all metrics, generates charts, and produces a beautiful
     interactive HTML report.
-    
+
     Args:
         ticker: Stock symbol (e.g., "AAPL", "SPY")
         period: Time period ("1y", "2y", "5y", "10y", "max")
@@ -62,7 +63,7 @@ def quick(
         theme: Visual theme ("glass", "midnight", "light", "terminal")
         save: Path to save HTML report (e.g., "AAPL.html")
         show: Whether to open report in browser
-    
+
     Returns:
         HTML string of the generated report
     """
@@ -73,12 +74,13 @@ def quick(
         theme=theme,
         save=save,
     )
-    
+
     if show and save:
         import webbrowser
         import os
+
         webbrowser.open(f"file://{os.path.abspath(save)}")
-    
+
     return html
 
 
@@ -92,35 +94,38 @@ def chart(
 ) -> go.Figure:
     """
     Generate a single chart for a ticker.
-    
+
     Args:
         ticker: Stock symbol
-        kind: Chart type - "price", "volume", "drawdown", "volatility", 
+        kind: Chart type - "price", "volume", "drawdown", "volatility",
               "sharpe", "monthly", "cumulative", "candlestick", "performance"
         period: Time period
         theme: Visual theme
         height: Chart height in pixels
         **kwargs: Additional arguments passed to chart functions
-    
+
     Returns:
         Plotly Figure object
     """
     df = fetch(ticker, period=period)
     prices = df["Close"]
-    
+
     chart_map = {
         "price": lambda: price_chart(
-            df, ticker=ticker, theme=theme, height=height,
+            df,
+            ticker=ticker,
+            theme=theme,
+            height=height,
             show_volume=kwargs.get("show_volume", False),
             ma_windows=kwargs.get("ma_windows"),
         ),
         "volume": lambda: volume_chart(df, ticker=ticker, theme=theme, height=height),
         "drawdown": lambda: drawdown_chart(prices, ticker=ticker, theme=theme, height=height),
         "volatility": lambda: rolling_vol_chart(
-            prices, 
+            prices,
             window=kwargs.get("window", 21),
-            ticker=ticker, 
-            theme=theme, 
+            ticker=ticker,
+            theme=theme,
             height=height,
         ),
         "sharpe": lambda: rolling_sharpe_chart(
@@ -140,11 +145,11 @@ def chart(
         "candlestick": lambda: candlestick_chart(df, ticker=ticker, theme=theme, height=height),
         "performance": lambda: _single_performance_chart(ticker, period, theme, height),
     }
-    
+
     if kind not in chart_map:
         available = ", ".join(chart_map.keys())
         raise ValueError(f"Unknown chart kind: {kind}. Available: {available}")
-    
+
     return chart_map[kind]()
 
 
@@ -168,7 +173,7 @@ def compare(
 ) -> Union[go.Figure, ComparisonResult, str]:
     """
     Compare multiple tickers with various visualizations.
-    
+
     Args:
         tickers: List of stock symbols
         period: Time period
@@ -176,7 +181,7 @@ def compare(
         theme: Visual theme
         save: Path to save (for report kind)
         height: Chart height
-    
+
     Returns:
         Plotly Figure, ComparisonResult object, or HTML string depending on kind
     """
@@ -187,19 +192,19 @@ def compare(
             theme=theme,
             save=save,
         )
-    
+
     comparison = compare_tickers(tickers, period=period)
-    
+
     if kind == "performance":
         prices_dict = {t: comparison.prices[t] for t in tickers}
         return performance_chart(prices_dict, theme=theme, height=height)
-    
+
     if kind == "risk_return":
         return risk_return_scatter(comparison.metrics, theme=theme, height=height)
-    
+
     if kind == "correlation":
         return correlation_matrix(comparison.prices, theme=theme, height=height)
-    
+
     return comparison
 
 
@@ -211,28 +216,28 @@ def metrics(
 ) -> dict:
     """
     Compute key financial metrics for a ticker.
-    
+
     Args:
         ticker: Stock symbol
         period: Time period
         benchmark: Optional benchmark for beta/alpha calculation
         formatted: Return formatted strings if True, raw values if False
-    
+
     Returns:
         Dictionary of metrics
     """
     df = fetch(ticker, period=period)
     prices = df["Close"]
-    
+
     benchmark_prices = None
     if benchmark:
         bench_df = fetch(benchmark, period=period)
         aligned_idx = prices.index.intersection(bench_df.index)
         prices = prices.loc[aligned_idx]
         benchmark_prices = bench_df["Close"].loc[aligned_idx]
-    
+
     raw_metrics = compute_metrics(prices, benchmark_prices)
-    
+
     if formatted:
         return format_metrics(raw_metrics)
     return raw_metrics
@@ -241,10 +246,10 @@ def metrics(
 def info(ticker: str) -> dict:
     """
     Get company/security information.
-    
+
     Args:
         ticker: Stock symbol
-    
+
     Returns:
         Dictionary with name, sector, market cap, etc.
     """
@@ -259,13 +264,13 @@ def export(
 ) -> str:
     """
     Export ticker data and metrics.
-    
+
     Args:
         ticker: Stock symbol
         format: "csv", "json", "excel"
         path: Output file path
         period: Time period
-        
+
     Returns:
         Absolute path to exported file
     """
@@ -280,23 +285,24 @@ def optimize(
 ) -> dict:
     """
     Optimize a portfolio of tickers.
-    
+
     Args:
         tickers: List of stock symbols
         period: Lookback period for optimization
         objective: "sharpe", "min_vol", "max_return"
         risk_free_rate: Optional annual risk-free rate
-        
+
     Returns:
         Dictionary with optimized weights and performance metrics
     """
     data = fetch_multiple(tickers, period=period)
     prices_df = align_dataframes(data)
-    
+
     from flux_rx.config import get_config
+
     if risk_free_rate is None:
         risk_free_rate = get_config().risk_free_rate
-        
+
     return optimize_fn(prices_df, objective=objective, risk_free_rate=risk_free_rate)
 
 
@@ -308,13 +314,13 @@ def screen(
 ) -> pd.DataFrame:
     """
     Screen and rank a list of tickers based on performance.
-    
+
     Args:
         tickers: List of stock symbols
         period: Analysis period
         sort_by: Metric to rank by
         ascending: Sort order
-        
+
     Returns:
         Pandas DataFrame with ranked results
     """
@@ -329,7 +335,7 @@ def app(
 ):
     """
     Launch the interactive Flux-RX dashboard application.
-    
+
     Args:
         tickers: Optional list of default tickers to display
         port: Port number for the web server
@@ -337,7 +343,7 @@ def app(
         theme: Default visual theme
     """
     from flux_rx.dashboard import create_app
-    
+
     application = create_app(default_tickers=tickers, default_theme=theme)
     application.run(port=port, debug=debug)
 

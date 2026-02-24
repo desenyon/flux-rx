@@ -11,27 +11,27 @@ class Config:
         self._default_period = "5y"
         self._cache_dir: Optional[str] = None
         self._timeout = 30
-        
+
     @property
     def risk_free_rate(self) -> float:
         return self._risk_free_rate
-        
+
     @risk_free_rate.setter
     def risk_free_rate(self, value: float):
         self._risk_free_rate = value
-        
+
     @property
     def default_theme(self) -> str:
         return self._default_theme
-        
+
     @default_theme.setter
     def default_theme(self, value: str):
         self._default_theme = value
-        
+
     @property
     def default_period(self) -> str:
         return self._default_period
-        
+
     @default_period.setter
     def default_period(self, value: str):
         self._default_period = value
@@ -39,7 +39,7 @@ class Config:
     @property
     def cache_dir(self) -> Optional[str]:
         return self._cache_dir
-        
+
     @cache_dir.setter
     def cache_dir(self, value: str):
         self._cache_dir = value
@@ -47,7 +47,7 @@ class Config:
     @property
     def timeout(self) -> int:
         return self._timeout
-        
+
     @timeout.setter
     def timeout(self, value: int):
         self._timeout = value
